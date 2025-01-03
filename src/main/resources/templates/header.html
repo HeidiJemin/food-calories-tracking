@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #34495e;
+            --accent-color: #3498db;
+            --background-color: #f8f9fa;
+            --text-color: #2c3e50;
+            --border-radius: 6px;
+            --box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background-color: var(--primary-color);
+            padding: 0.5rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: var(--box-shadow);
+        }
+
+        .navbar-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 40px;
+        }
+
+        .logo {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .navbar {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            font-size: 0.85rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: var(--border-radius);
+            transition: all 0.2s ease;
+        }
+
+        .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .logout-btn {
+            color: white;
+            text-decoration: none;
+            font-size: 0.85rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: var(--border-radius);
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: all 0.2s ease;
+        }
+
+        .logout-btn:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: white;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+   <header th:fragment="header" class="header">
+    <div class="navbar-container">
+        <span class="logo">Food Calories Tracking</span>
+        <nav class="navbar">
+            <a href="/public/dashboard" class="nav-link" th:if="${user.role == 'ROLE_USER'}"}>Dashboard</a>
+            <a href="/admin/dashboard" class="nav-link" th:if="${user.role == 'ROLE_ADMIN'}">Dashboard</a>
+            <a href="/public/food-report" class="nav-link">Food Reports</a>
+        </nav>
+        <div class="user-info">
+            <span th:text="${user.name}">User</span>
+            <a href="/public/auth/logout" class="logout-btn">Logout</a>
+        </div>
+    </div>
+</header>
+
+</body>
+</html>
