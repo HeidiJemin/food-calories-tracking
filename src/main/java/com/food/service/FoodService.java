@@ -176,8 +176,158 @@ public class FoodService {
 		}
 	}
 	
+	public List<FoodConsumptionDto> getFoodConsumptionSummary(long userId, Integer month, Integer year) {
+		try {
+			LocalDate currentDate = LocalDate.now();
+			if (year == null || year <= 0) {
+				year = currentDate.getYear();
+			}
 
-	
+			if (month == null || month <= 0) {
+				month = currentDate.getMonthValue();
+			}
+
+			LocalDate startDate = LocalDate.of(year, month, 1);
+			LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
+
+			List<Food> consumedFoods = foodRepo.findByUserIdAndDateBetween(userId, startDate, endDate);
+			List<FoodConsumptionDto> consumptionDtos = new ArrayList<>();
+
+			FoodConsumptionDto consumptionDto = new FoodConsumptionDto();
+			consumptionDto.setMonth(startDate.getMonth().toString());
+			consumptionDto.setYear(year);
+
+			double totalAmount = consumedFoods.stream().mapToDouble(Food::getPrice).sum();
+			long totalCalories = consumedFoods.stream().mapToLong(Food::getCalories).sum();
+			boolean limitExceeded = totalAmount >= monthlySpendLimit;
+
+			consumptionDto.setTotalAmountSpentInMonth(totalAmount);
+			consumptionDto.setTotalCaloriesConsumedInMonth(totalCalories);
+			consumptionDto.setMonthlyAmountLimitReached(limitExceeded);
+
+			List<FoodConsumptionDto.DailyFoodConsumption> dailyConsumptions = new ArrayList<>();
+			for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+				LocalDate iteratedDate = date;
+				List<Food> foodsForDay = consumedFoods.stream().filter(food -> food.getDate().equals(iteratedDate))
+						.collect(Collectors.toList());
+
+				FoodConsumptionDto.DailyFoodConsumption dailyConsumption = new FoodConsumptionDto.DailyFoodConsumption();
+				dailyConsumption.setDate(date);
+				dailyConsumption.setDay(date.getDayOfWeek().toString());
+				if (!foodsForDay.isEmpty()) {
+					dailyConsumption.setCalories(foodsForDay.stream().mapToLong(Food::getCalories).sum());
+					dailyConsumption.setAmount(foodsForDay.stream().mapToDouble(Food::getPrice).sum());
+					dailyConsumption.setCaloriesLimitExceeded(dailyConsumption.getCalories() >= dailyCaloriesLimit);
+				}
+				dailyConsumptions.add(dailyConsumption);
+			}
+
+			consumptionDto.setDailyFoodConsumptions(dailyConsumptions);
+			consumptionDtos.add(consumptionDto);
+
+			return consumptionDtos;
+		} catch (Exception e) {
+			throw new AppException(e.getMessage());
+		}
+	}
+
+	public PagedResponseDto<FoodResponseDto> getAllFood(long userId, LocalDate requestStartDate,
+			LocalDate requestEndDate, int page, int size, long searchUserId) {
+		try {
+			LocalDate startDate = requestStartDate != null ? requestStartDate
+					: LocalDate.now().minusDays(AppConstant.DEFAULT_FOOD_TRACKING_DAYS_COUNT);
+			LocalDate endDate = requestEndDate != null ? requestEndDate : LocalDate.now();
+
+			if (startDate.isAfter(endDate)) {
+				throw new AppException("Start date cannot be after end date.");
+			}
+
+			Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.asc("date")));
+			Page<Food> foodPage;
+
+			Optional<User> user = userRepo.findById(userId);
+			if (!user.isPresent()) {
+				throw new NotFoundException("User id not found");
+			}
+
+			if (!user.get().getRole().equals(RoleType.ROLE_ADMIN.name())) {
+				foodPage = foodRepo.findByUserIdAndDateBetween(userId, startDate, endDate, pageable);
+			} else {
+				foodPage = searchUserId > 0
+						? foodRepo.findByUserIdAndDateBetween(searchUserId, startDate, endDate, pageable)
+						: foodRepo.findByDateBetween(startDate, endDate, pageable);
+			}
+
+			List<FoodResponseDto> responseDtos = new ArrayList<>();
+			List<Food> foods = foodPage.getContent();
+			
+			System.out.println("====Size===="+foods.size());
+
+			FoodResponseDto monthlyDto = new FoodResponseDto();
+			monthlyDto.setTotalAmountSpentInMonth(foods.stream().mapToDouble(Food::getPrice).sum());
+			monthlyDto.setTotalCaloriesConsumedInMonth(foods.stream().mapToLong(Food::getCalories).sum());
+			monthlyDto.setMonthlyAmountLimitReached(monthlyDto.getTotalCaloriesConsumedInMonth() >= monthlySpendLimit);
+			
+			System.out.println("========"+foods.stream().mapToDouble(Food::getPrice).sum());
+
+			List<FoodResponseDto.DailyFoodConsumption> dailyConsumptions = new ArrayList<>();
+			for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+				LocalDate iteratedDate = date;
+				List<Food> dailyFoods = foods.stream().filter(food -> food.getDate().equals(iteratedDate))
+						.collect(Collectors.toList());
+
+				FoodResponseDto.DailyFoodConsumption dailyDto = new FoodResponseDto.DailyFoodConsumption();
+				dailyDto.setDate(date);
+				dailyDto.setTotalCalories(dailyFoods.stream().mapToLong(Food::getCalories).sum());
+				dailyDto.setTotalAmount(dailyFoods.stream().mapToDouble(Food::getPrice).sum());
+				dailyDto.setCaloriesLimitExceeded(dailyDto.getTotalCalories() >= dailyCaloriesLimit);
+
+				List<FoodResponseDto.DailyFoodResponse> dailyFoodResponses = dailyFoods.stream().map(food -> {
+					FoodResponseDto.DailyFoodResponse foodResponse = new FoodResponseDto.DailyFoodResponse();
+					foodResponse.setFoodId(food.getId());
+					foodResponse.setFoodName(food.getName());
+					foodResponse.setCalorieCount(food.getCalories());
+					foodResponse.setPrice(food.getPrice());
+					foodResponse.setConsumptionTime(food.getTime());
+					foodResponse.setCreatedAt(food.getCreatedAt());
+
+					UserResponseDto userDto = new UserResponseDto();
+					userDto.setId(food.getUser().getId());
+					userDto.setEmail(food.getUser().getEmail());
+					userDto.setName(food.getUser().getName());
+					userDto.setRole(food.getUser().getRole());
+					foodResponse.setUserDetails(userDto);
+					return foodResponse;
+				}).collect(Collectors.toList());
+
+				dailyDto.setDailyFoodResponses(dailyFoodResponses);
+				dailyConsumptions.add(dailyDto);
+
+				boolean dayFound = dailyConsumptions.stream()
+						.anyMatch(consumption -> consumption.getDate().equals(iteratedDate));
+				if (!dayFound) {
+					FoodResponseDto.DailyFoodConsumption emptyDayDto = new FoodResponseDto.DailyFoodConsumption();
+					emptyDayDto.setDate(date);
+					emptyDayDto.setTotalCalories(0);
+					emptyDayDto.setTotalAmount(0.0);
+					emptyDayDto.setCaloriesLimitExceeded(false);
+					emptyDayDto.setDailyFoodResponses(new ArrayList<>());
+					dailyConsumptions.add(emptyDayDto);
+				}
+
+			}
+
+			monthlyDto.setDailyFoodConsumptions(dailyConsumptions);
+			responseDtos.add(monthlyDto);
+			
+			return new PagedResponseDto<>(responseDtos, foodPage.getNumber(), foodPage.getSize(),
+					foodPage.getTotalElements(), foodPage.getTotalPages(), foodPage.isLast());
+
+		} catch (Exception e) {
+			throw new AppException(e.getMessage());
+		}
+	}
+
 	
 }
 
