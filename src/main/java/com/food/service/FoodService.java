@@ -327,6 +327,103 @@ public class FoodService {
 			throw new AppException(e.getMessage());
 		}
 	}
+	
+	public long getDaysFoodCount(long userId, LocalDate requestStartDate, LocalDate requestEndDate) {
+		try {
+			LocalDate startDate = requestStartDate != null ? requestStartDate
+					: LocalDate.now().minusDays(AppConstant.DEFAULT_FOOD_TRACKING_DAYS_COUNT);
+			LocalDate endDate = requestEndDate != null ? requestEndDate : LocalDate.now();
+
+			if (startDate.isAfter(endDate)) {
+				throw new AppException("Start date cannot be after end date.");
+			}
+			return foodRepo.countByDateBetween(startDate, endDate);
+		} catch (Exception e) {
+			throw new AppException(e.getMessage());
+		}
+	}
+	
+	public List<FoodCaloriesResponseDto> calculateAverageCaloriesPerUser(LocalDate startDate, LocalDate endDate) {
+	    try {
+	        LocalDate effectiveStartDate = (startDate != null) ? startDate
+	                : LocalDate.now().minusDays(AppConstant.DEFAULT_FOOD_TRACKING_DAYS_COUNT);
+	        LocalDate effectiveEndDate = (endDate != null) ? endDate : LocalDate.now();
+
+	        if (effectiveStartDate.isAfter(effectiveEndDate)) {
+	            throw new AppException("Start date cannot be after end date.");
+	        }
+
+	        List<User> allUsers = userRepo.findAllByRole(RoleType.ROLE_USER.name());
+	        List<Food> foodsConsumedInPeriod = foodRepo.findAllByDateBetween(effectiveStartDate, effectiveEndDate);
+
+	        return allUsers.stream().map(user -> {
+	            List<Food> userFoods = foodsConsumedInPeriod.stream()
+	                    .filter(food -> food.getUser().equals(user))
+	                    .collect(Collectors.toList());
+
+	            int totalCaloriesConsumed = userFoods.stream().mapToInt(Food::getCalories).sum();
+	            int foodCount = userFoods.size();
+
+	            float averageCalories = (foodCount > 0) ? (float) totalCaloriesConsumed / foodCount : 0;
+
+	            UserResponseDto userDto = new UserResponseDto();
+	            userDto.setEmail(user.getEmail());
+	            userDto.setId(user.getId());
+	            userDto.setName(user.getName());
+	            userDto.setRole(user.getRole());
+
+	            FoodCaloriesResponseDto responseDto = new FoodCaloriesResponseDto();
+	            responseDto.setUser(userDto);
+	            responseDto.setCalories(averageCalories);
+
+	            return responseDto;
+	        }).collect(Collectors.toList());
+	    } catch (Exception e) {
+	        throw new AppException(e.getMessage());
+	    }
+	}
+	public PriceLimitReachedResponseDto getUsersWithExceededPriceLimit(Integer month, Integer year) {
+		try {
+			YearMonth currentMonth = (month != null && year != null) ? YearMonth.of(year, month)
+					: YearMonth.now().minusMonths(1);
+
+			LocalDate startOfMonth = currentMonth.atDay(1);
+			LocalDate endOfMonth = currentMonth.atEndOfMonth();
+
+			List<Food> foodsConsumed = foodRepo.findAllByDateBetween(startOfMonth, endOfMonth);
+			Map<User, List<Food>> foodsByUser = foodsConsumed.stream().collect(Collectors.groupingBy(Food::getUser));
+
+			PriceLimitReachedResponseDto responseDto = new PriceLimitReachedResponseDto();
+			responseDto.setMonthlyLimit(monthlySpendLimit);
+
+			List<PriceLimitReachedResponseDto.ExceededUser> exceededUsers = new ArrayList<>();
+
+			for (Map.Entry<User, List<Food>> entry : foodsByUser.entrySet()) {
+				User user = entry.getKey();
+				List<Food> userFoods = entry.getValue();
+				double totalSpentAmount = userFoods.stream().mapToDouble(Food::getPrice).sum();
+				if (totalSpentAmount > monthlySpendLimit) {
+					PriceLimitReachedResponseDto.ExceededUser exceededUser = new PriceLimitReachedResponseDto.ExceededUser();
+					UserResponseDto userResponseDto = new UserResponseDto();
+					userResponseDto.setId(user.getId());
+					userResponseDto.setEmail(user.getEmail());
+					userResponseDto.setName(user.getName());
+					userResponseDto.setRole(user.getRole());
+
+					exceededUser.setUser(userResponseDto);
+					exceededUser.setTotalSpentAmount(totalSpentAmount);
+					exceededUser.setExceededAmount(totalSpentAmount - monthlySpendLimit);
+
+					exceededUsers.add(exceededUser);
+				}
+			}
+
+			responseDto.setExceededUsers(exceededUsers);
+			return responseDto;
+		} catch (Exception e) {
+			throw new AppException(e.getMessage());
+		}
+	}
 
 	
 }
