@@ -1,0 +1,19 @@
+{"properties": [
+  {
+    "name": "app.daily.calorie.threshold.limit",
+    "type": "java.lang.String",
+    "description": "A description for 'app.daily.calorie.threshold.limit'"
+  },
+  {
+    "name": "app.user.monthly.spend.limit",
+    "type": "java.lang.String",
+    "description": "A description for 'app.user.monthly.spend.limit'"
+  }
+]} "description": "A description for 'app.daily.calorie.threshold.limit'"
+  },
+  {
+    "name": "app.user.monthly.spend.limit",
+    "type": "java.lang.String",
+    "description": "A description for 'app.user.monthly.spend.limit'"
+  }
+]}

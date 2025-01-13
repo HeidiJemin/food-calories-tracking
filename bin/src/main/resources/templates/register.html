@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="form-container">
+        <h2>Register</h2>
+        <form action="/public/auth/register" method="post" th:object="${userDto}">
+            <div class="form-group">
+                <label for="name">Name</label>
+                <input type="text" id="name" name="name" th:field="*{name}" required>
+                <p th:if="${#fields.hasErrors('name')}" th:errors="*{name}" class="error-message"></p>
+            </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" th:field="*{email}" required>
+                <p th:if="${#fields.hasErrors('email')}" th:errors="*{email}" class="error-message"></p>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" th:field="*{password}" required>
+                <p th:if="${#fields.hasErrors('password')}" th:errors="*{password}" class="error-message"></p>
+            </div>
+            <button type="submit">Register</button>
+        </form>
+        
+        <!-- Display general error message if any -->
+        <p th:if="${error}" th:text="${error}" class="error-message"></p>
+        
+        <p>Already have an account? <a href="/login">Login here</a></p>
+    </div>
+
+    <!-- Optional: You can add custom styles for error messages -->
+    <style>
+        .error-message {
+            color: red;
+            font-size: 0.9rem;
+        }
+    </style>
+</body>
+</html>

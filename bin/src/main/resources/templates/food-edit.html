@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<title>Edit Food Entry</title>
+<link
+	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
+	rel="stylesheet">
+<link
+	href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css"
+	rel="stylesheet">
+<style>
+:root {
+	--primary-color: #2c3e50;
+	--secondary-color: #34495e;
+	--accent-color: #3498db;
+	--background-color: #f8f9fa;
+	--text-color: #2c3e50;
+	--border-radius: 6px;
+	--box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+body {
+	font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+	background-color: var(--background-color);
+	color: var(--text-color);
+	line-height: 1.6;
+}
+
+.header {
+	background-color: var(--primary-color);
+	padding: 0.5rem 2rem;
+	position: sticky;
+	top: 0;
+	z-index: 1000;
+	box-shadow: var(--box-shadow);
+}
+
+.navbar-container {
+	max-width: 1200px;
+	margin: 0 auto;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	height: 40px;
+}
+
+.logo {
+	font-size: 1.1rem;
+	font-weight: 600;
+	color: white;
+}
+
+.navbar {
+	display: flex;
+	gap: 1rem;
+	align-items: center;
+}
+
+.nav-link {
+	color: rgba(255, 255, 255, 0.9);
+	text-decoration: none;
+	font-size: 0.85rem;
+	padding: 0.35rem 0.75rem;
+	border-radius: var(--border-radius);
+	transition: all 0.2s ease;
+}
+
+.nav-link:hover {
+	background-color: rgba(255, 255, 255, 0.1);
+	color: white;
+}
+
+.logout-btn {
+	color: white;
+	text-decoration: none;
+	font-size: 0.85rem;
+	padding: 0.35rem 0.75rem;
+	border-radius: var(--border-radius);
+	background-color: rgba(255, 255, 255, 0.1);
+	transition: all 0.2s ease;
+}
+
+.logout-btn:hover {
+	background-color: rgba(255, 255, 255, 0.2);
+}
+
+.user-info {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	color: white;
+	font-size: 0.85rem;
+}
+</style>
+</head>
+<body class="bg-light">
+	<div th:replace="~{header :: header}"></div>
+	<div class="container py-4">
+		<div class="row justify-content-center">
+			<div class="col-md-6">
+				<div class="card shadow">
+					<div class="card-header">
+						<h5 class="card-title mb-0">Edit Food Entry</h5>
+					</div>
+					<div class="card-body">
+						<form th:action="@{/public/food-report/edit/{id}(id=${food.id})}"
+							method="post" th:object="${food}">
+							<div class="mb-3">
+								<label class="form-label">Food Name</label> <input type="text"
+									class="form-control" th:field="*{name}" required>
+								<div class="text-danger" th:if="${#fields.hasErrors('name')}"
+									th:errors="*{name}"></div>
+							</div>
+							<div class="mb-3">
+								<label class="form-label">Calories</label> <input type="number"
+									class="form-control" th:field="*{calories}" required>
+								<div class="text-danger"
+									th:if="${#fields.hasErrors('calories')}"
+									th:errors="*{calories}"></div>
+							</div>
+							<div class="mb-3">
+								<label class="form-label">Price €</label> <input type="number"
+									class="form-control" th:field="*{price}" step="0.01" required>
+								<div class="text-danger" th:if="${#fields.hasErrors('price')}"
+									th:errors="*{price}"></div>
+							</div>
+							<div class="mb-3">
+								<label class="form-label">Date</label> <input type="date"
+									class="form-control" th:field="*{date}" required>
+								<div class="text-danger" th:if="${#fields.hasErrors('date')}"
+									th:errors="*{date}"></div>
+							</div>
+							<div class="mb-3">
+								<label class="form-label">Time</label> <input type="time"
+									class="form-control" th:field="*{time}" required>
+								<div class="text-danger" th:if="${#fields.hasErrors('time')}"
+									th:errors="*{time}"></div>
+							</div>
+							<div class="text-end">
+								<a th:href="@{/public/food-report}" class="btn btn-secondary">Cancel</a>
+								<button type="submit" class="btn btn-primary">Update
+									Food</button>
+							</div>
+						</form>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<script
+		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -187,7 +187,154 @@ public class ThymeLeafController {
 	    }
 	    return "dashboard";
 	}
-
 	
+	@GetMapping("/public/food-report")
+	public String getFoodReport(
+			@RequestParam(name="startDate",required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+			@RequestParam(name="endDate",required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+			@RequestParam(name="page",defaultValue = "0") int page, @RequestParam(name="size",defaultValue = "10") int size,
+			@RequestParam(name="searchMemberId",required = false) Long searchMemberId, Model model, HttpSession session) {
+		UserResponseDto userResponseDto = (UserResponseDto) session.getAttribute("user");
+		if (userResponseDto == null) {
+			model.addAttribute("error", "Please log in to view the food report");
+			return "redirect:/login";
+		}
+
+		LocalDate currentDate = LocalDate.now();
+		if (startDate == null) {
+			startDate = currentDate.withDayOfMonth(1);
+		}
+		if (endDate == null) {
+			endDate = currentDate;
+		}
+
+		try {
+			Long userId = userResponseDto.getId();
+
+			PagedResponseDto<FoodResponseDto> foodList = foodService.getAllFood(userId, startDate, endDate, page, 100000,
+					0);
+
+			model.addAttribute("foodData", foodList);
+			model.addAttribute("currentPage", page);
+			model.addAttribute("pageSize", 100000);
+			model.addAttribute("startDate", startDate);
+			model.addAttribute("endDate", endDate);
+			model.addAttribute("searchMemberId", 0);
+			model.addAttribute("userId", userId);
+			model.addAttribute("user", userResponseDto);
+			
+			if (userResponseDto.getRole().equals(RoleType.ROLE_ADMIN.name())) {
+				model.addAttribute("users", userRepo.findAll().stream()
+						.filter(e -> e.getRole().equals(RoleType.ROLE_USER.name())).collect(Collectors.toList()));
+			}
+
+			LocalDate today = LocalDate.now();
+			GenericMessage calorieMessage = foodService.checkDailyCalorieThreshold(userResponseDto.getId(), today);
+			if (calorieMessage != null) {
+				model.addAttribute("warningCalorieMessage", calorieMessage.getMessage());
+			}
+
+			GenericMessage monthlyExpenditureMessage = foodService.checkMonthlyExpenditure(userId, today);
+			if (monthlyExpenditureMessage != null) {
+				model.addAttribute("warningMonthlyExpenditureMessage", monthlyExpenditureMessage.getMessage());
+			}
+
+			return "food";
+		} catch (Exception e) {
+			PagedResponseDto<FoodResponseDto> foodList  = new PagedResponseDto<FoodResponseDto>(new ArrayList<FoodResponseDto>(), page, 100000, 0, 0, true);
+			model.addAttribute("foodData", foodList);
+			model.addAttribute("currentPage", page);
+			model.addAttribute("pageSize", 100000);
+			model.addAttribute("startDate", startDate);
+			model.addAttribute("endDate", endDate);
+			model.addAttribute("searchMemberId", 0);
+			model.addAttribute("user", userResponseDto);
+			model.addAttribute("error", "Error fetching food report: " + e.getMessage());
+			return "food";
+		}
+	}
+
+	@PostMapping("/public/food-report")
+	public String createFood(@Valid FoodDto foodDto, BindingResult result, Model model, HttpSession session) {
+		UserResponseDto userResponseDto = (UserResponseDto) session.getAttribute("user");
+		if (userResponseDto == null) {
+			model.addAttribute("error", "Please log in to add food.");
+			return "redirect:/login";
+		}
+
+		if (result.hasErrors()) {
+			return "food";
+		}
+
+		try {
+			if (!userResponseDto.getRole().equals(RoleType.ROLE_ADMIN.name())) {
+	            foodDto.setUserId(userResponseDto.getId());
+	        }
+			foodService.createFood(foodDto);
+			model.addAttribute("success", "Food added successfully!");
+			return "redirect:/public/food-report";
+		} catch (Exception e) {
+			model.addAttribute("error", "Error adding food: " + e.getMessage());
+			return "food";
+		}
+	}
+	
+	@GetMapping("/public/food-report/edit/{id}")
+	public String showEditForm(@PathVariable("id") Long id, Model model, HttpSession session) {
+		UserResponseDto userResponseDto = (UserResponseDto) session.getAttribute("user");
+		if (userResponseDto == null) {
+			return "redirect:/public/auth/login";
+		}
+
+		Food food = foodService.getFoodById(id);
+		
+		model.addAttribute("user", userResponseDto);
+		model.addAttribute("food", food);
+		
+		return "food-edit";
+	}
+
+	@PostMapping("/public/food-report/edit/{id}")
+	public String updateFood(@PathVariable("id") Long id, @Valid Food food, BindingResult result, HttpSession session) {
+
+		UserResponseDto userResponseDto = (UserResponseDto) session.getAttribute("user");
+		if (userResponseDto == null) {
+			return "redirect:/login";
+		}
+
+		if (result.hasErrors()) {
+			return "food-edit";
+		}
+
+		try {
+			FoodDto foodDto = new FoodDto();
+			
+			foodDto.setCalories(food.getCalories());
+			foodDto.setDate(food.getDate());
+			foodDto.setName(food.getName());
+			foodDto.setPrice(food.getPrice());
+			foodDto.setTime(food.getTime());
+			foodDto.setUserId(userResponseDto.getId());
+			foodService.updateFood(id, foodDto);
+			return "redirect:/public/food-report?success=Food updated successfully!";
+		} catch (Exception e) {
+			return "redirect:/public/food-report/edit/" + id + "?error=" + e.getMessage();
+		}
+	}
+
+	@PostMapping("/public/food-report/delete/{id}")
+	public String deleteFood(@PathVariable("id") Long id, @RequestParam(name="userId") Long userId, HttpSession session, Model model) {
+		UserResponseDto userResponseDto = (UserResponseDto) session.getAttribute("user");
+		if (userResponseDto == null) {
+			return "redirect:/login";
+		}
+		try {
+			foodService.deleteFood(id, userResponseDto.getId());
+			model.addAttribute("successMessage", "Food deleted successfully!");
+		} catch (Exception e) {
+			model.addAttribute("error", "Error deleting food: " + e.getMessage());
+		}
+		return "redirect:/public/food-report";
+	}
 
 }

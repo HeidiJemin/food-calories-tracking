@@ -424,7 +424,95 @@ public class FoodService {
 			throw new AppException(e.getMessage());
 		}
 	}
+	
+	public List<WeeklyFoodReportResponseDto> getWeeklyFoodReport(long userId) {
+		try {
+			Optional<User> optionalUser = userRepo.findById(userId);
+			if (!optionalUser.isPresent()) {
+				throw new NotFoundException("User ID not found");
+			}
 
+			User user = optionalUser.get();
+			if (!user.getRole().equals(RoleType.ROLE_ADMIN.name())) {
+				throw new NotFoundException("You don't have permission to view this information");
+			}
+
+			LocalDate today = LocalDate.now();
+			LocalDate startOfCurrentWeek = today.with(DayOfWeek.SUNDAY);
+			if (!today.equals(startOfCurrentWeek)) {
+				startOfCurrentWeek = today.minusDays(today.getDayOfWeek().getValue());
+			}
+			LocalDate endOfCurrentWeek = startOfCurrentWeek.plusDays(AppConstant.WEEKDAYS_COUNT);
+			LocalDate startOfPreviousWeek = startOfCurrentWeek.minusWeeks(1);
+//			LocalDate endOfPreviousWeek = startOfPreviousWeek.plusDays(AppConstant.WEEKDAYS_COUNT);
+
+			List<Food> foods = foodRepo.findAllByDateBetween(startOfPreviousWeek, endOfCurrentWeek);
+
+			List<WeeklyFoodReportResponseDto> weeklyReport = new ArrayList<>();
+
+			for (LocalDate date = startOfPreviousWeek; !date.isAfter(endOfCurrentWeek); date = date.plusDays(1)) {
+
+				LocalDate iteratedDate = date;
+
+				List<Food> dailyFoods = foods.stream().filter(food -> food.getDate().equals(iteratedDate))
+						.collect(Collectors.toList());
+
+				double totalAmountSpent = dailyFoods.stream().mapToDouble(Food::getPrice).sum();
+				int totalCaloriesConsumed = dailyFoods.stream().mapToInt(Food::getCalories).sum();
+
+				WeeklyFoodReportResponseDto reportDto = new WeeklyFoodReportResponseDto();
+				reportDto.setDate(date);
+				reportDto.setDay(date.getDayOfWeek().toString());
+				reportDto.setMonth(date.getMonth().toString());
+				reportDto.setMonthlyPriceLimitExceed(totalAmountSpent >= monthlySpendLimit);
+				reportDto.setTotalAmount(totalAmountSpent);
+				reportDto.setCaloriesLimitExceeded(totalCaloriesConsumed >= dailyCaloriesLimit);
+				reportDto.setTotalCalories(totalCaloriesConsumed);
+
+				List<WeeklyFoodReportResponseDto.UserDetail> userDetails = new ArrayList<>();
+
+				List<User> usersWhoCreatedFood = dailyFoods.stream().map(Food::getUser).distinct()
+						.collect(Collectors.toList());
+
+				for (User foodCreator : usersWhoCreatedFood) {
+					WeeklyFoodReportResponseDto.UserDetail userDetail = new WeeklyFoodReportResponseDto.UserDetail();
+					userDetail.setUserResponse(buildUserResponse(foodCreator));
+
+					List<WeeklyFoodReportResponseDto.FoodResponse> foodResponses = dailyFoods.stream()
+							.filter(food -> food.getUser().equals(foodCreator)).map(this::buildFoodResponse)
+							.collect(Collectors.toList());
+
+					userDetail.setFoodResponses(foodResponses);
+					userDetails.add(userDetail);
+				}
+
+				reportDto.setUserDetails(userDetails);
+				weeklyReport.add(reportDto);
+			}
+			return weeklyReport;
+		} catch (Exception e) {
+			throw new AppException(e.getMessage());
+		}
+	}
+
+	public UserResponseDto buildUserResponse(User user) {
+		UserResponseDto userResponseDto = new UserResponseDto();
+		userResponseDto.setId(user.getId());
+		userResponseDto.setEmail(user.getEmail());
+		userResponseDto.setName(user.getName());
+		userResponseDto.setRole(user.getRole());
+		return userResponseDto;
+	}
+
+	public WeeklyFoodReportResponseDto.FoodResponse buildFoodResponse(Food food) {
+		WeeklyFoodReportResponseDto.FoodResponse foodResponse = new WeeklyFoodReportResponseDto.FoodResponse();
+		foodResponse.setId(food.getId());
+		foodResponse.setFoodName(food.getName());
+		foodResponse.setCalorieCount(food.getCalories());
+		foodResponse.setPrice(food.getPrice());
+		foodResponse.setConsumptionTime(food.getTime());
+		return foodResponse;
+	}
 	
 }
 

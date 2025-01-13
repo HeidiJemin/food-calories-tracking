@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Food Calories Tracking Dashboard</title>
+<style>
+:root {
+	--primary-color: #2c3e50;
+	--secondary-color: #34495e;
+	--accent-color: #3498db;
+	--background-color: #f8f9fa;
+	--text-color: #2c3e50;
+	--border-radius: 6px;
+	--box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+body {
+	font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+	background-color: var(--background-color);
+	color: var(--text-color);
+	line-height: 1.6;
+}
+
+.header {
+	background-color: var(--primary-color);
+	padding: 0.5rem 2rem;
+	position: sticky;
+	top: 0;
+	z-index: 1000;
+	box-shadow: var(--box-shadow);
+}
+
+.navbar-container {
+	max-width: 1200px;
+	margin: 0 auto;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	height: 40px;
+}
+
+.logo {
+	font-size: 1.1rem;
+	font-weight: 600;
+	color: white;
+}
+
+.navbar {
+	display: flex;
+	gap: 1rem;
+	align-items: center;
+}
+
+.nav-link {
+	color: rgba(255, 255, 255, 0.9);
+	text-decoration: none;
+	font-size: 0.85rem;
+	padding: 0.35rem 0.75rem;
+	border-radius: var(--border-radius);
+	transition: all 0.2s ease;
+}
+
+.nav-link:hover {
+	background-color: rgba(255, 255, 255, 0.1);
+	color: white;
+}
+
+.logout-btn {
+	color: white;
+	text-decoration: none;
+	font-size: 0.85rem;
+	padding: 0.35rem 0.75rem;
+	border-radius: var(--border-radius);
+	background-color: rgba(255, 255, 255, 0.1);
+	transition: all 0.2s ease;
+}
+
+.logout-btn:hover {
+	background-color: rgba(255, 255, 255, 0.2);
+}
+
+.user-info {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	color: white;
+	font-size: 0.85rem;
+}
+
+.content {
+	max-width: 1200px;
+	margin: 1.5rem auto;
+	padding: 0 2rem;
+}
+
+/* New styles for summary cards */
+.summary-section {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 1.5rem;
+	margin-bottom: 2rem;
+}
+
+.summary-card {
+	background-color: white;
+	padding: 1.5rem;
+	border-radius: var(--border-radius);
+	box-shadow: var(--box-shadow);
+	transition: transform 0.2s ease;
+}
+
+.summary-card:hover {
+	transform: translateY(-2px);
+}
+
+.summary-title {
+	font-size: 0.9rem;
+	color: var(--secondary-color);
+	margin-bottom: 0.75rem;
+	font-weight: 500;
+}
+
+.summary-value {
+	font-size: 1.75rem;
+	font-weight: 600;
+	color: var(--primary-color);
+}
+
+.summary-card.calories .summary-value {
+	color: #27ae60;
+}
+
+.summary-card.expenditure .summary-value {
+	color: #2980b9;
+}
+
+.summary-card .summary-value.exceed-limit {
+	color: #e74c3c;
+}
+
+.summary-stat {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.summary-stat-label {
+	font-size: 0.9rem;
+	color: var(--secondary-color);
+}
+
+.summary-stat-value {
+	font-size: 1.25rem;
+	font-weight: 600;
+	color: var(--primary-color);
+}
+
+.date-selector-form {
+	background-color: white;
+	padding: 1rem;
+	border-radius: var(--border-radius);
+	box-shadow: var(--box-shadow);
+	margin-bottom: 1.5rem;
+	display: flex;
+	gap: 1rem;
+	align-items: center;
+}
+
+.date-selector {
+	display: flex;
+	gap: 1rem;
+	align-items: center;
+}
+
+select {
+	padding: 0.35rem 0.75rem;
+	border: 1px solid #ddd;
+	border-radius: var(--border-radius);
+	font-size: 0.85rem;
+	color: var(--text-color);
+	background-color: white;
+	min-width: 120px;
+}
+
+.search-button {
+	background-color: var(--accent-color);
+	color: white;
+	border: none;
+	padding: 0.35rem 1rem;
+	border-radius: var(--border-radius);
+	cursor: pointer;
+	font-size: 0.85rem;
+	transition: background-color 0.2s ease;
+}
+
+.search-button:hover {
+	background-color: #2980b9;
+}
+
+.calendar-view {
+	background-color: white;
+	border-radius: var(--border-radius);
+	box-shadow: var(--box-shadow);
+	padding: 1.5rem;
+}
+
+.calendar-grid {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 1px;
+	background-color: #eee;
+	border: 1px solid #eee;
+	border-radius: var(--border-radius);
+}
+
+.calendar-header {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	background-color: var(--primary-color);
+	color: white;
+	border-radius: var(--border-radius) var(--border-radius) 0 0;
+}
+
+.calendar-header span {
+	padding: 0.5rem;
+	text-align: center;
+	font-size: 0.8rem;
+	font-weight: 500;
+}
+
+.calendar-day {
+	background-color: white;
+	padding: 0.75rem;
+	min-height: 100px;
+	transition: background-color 0.3s ease;
+}
+
+.calendar-day.calories-exceeded {
+	background-color: rgba(231, 76, 60, 0.1);
+	border-left: 3px solid #e74c3c;
+}
+
+.calories-warning {
+	color: #e74c3c;
+	font-size: 0.75rem;
+	margin-top: 0.25rem;
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
+}
+
+.warning-icon {
+	width: 12px;
+	height: 12px;
+	fill: #e74c3c;
+}
+
+.day-header {
+	font-size: 0.85rem;
+	font-weight: 500;
+	margin-bottom: 0.5rem;
+	color: var(--text-color);
+}
+
+.day-content {
+	font-size: 0.8rem;
+	color: var(--secondary-color);
+}
+
+.calories {
+	color: #e74c3c;
+	font-weight: 500;
+}
+
+.amount {
+	color: #27ae60;
+	font-weight: 500;
+}
+
+@media ( max-width : 1200px) {
+	.summary-section {
+		grid-template-columns: repeat(2, 1fr);
+	}
+}
+
+@media ( max-width : 768px) {
+	.summary-section {
+		grid-template-columns: 1fr;
+	}
+	.date-selector-form {
+		flex-direction: column;
+	}
+	.date-selector {
+		flex-direction: column;
+		width: 100%;
+	}
+	select {
+		width: 100%;
+	}
+	.search-button {
+		width: 100%;
+	}
+	.calendar-grid {
+		grid-template-columns: repeat(1, 1fr);
+	}
+	.calendar-header {
+		display: none;
+	}
+	.high-expenditure {
+		color: red;
+		font-weight: bold;
+	}
+}
+</style>
+</head>
+<body>
+	<div th:replace="~{header :: header}"></div>
+
+	<main class="content">
+		<!-- New Summary Section -->
+		<section class="summary-section">
+			<!-- Weekly Expenditure Card -->
+			<div class="summary-card">
+				<div class="summary-title">Current week expenditure</div>
+				<div class="summary-value" th:text="'€' + ${totalWeeklyExpenditure}">€0</div>
+			</div>
+
+			<!-- Days Exceeded Card -->
+			<div class="summary-card">
+				<div class="summary-title">Calories exceeded in this week</div>
+				<div class="summary-value"
+					th:text="${daysCaloriesExceeded} + ' days'">0</div>
+			</div>
+
+
+			<!-- Monthly Calories Card -->
+			<div class="summary-card calories">
+				<div class="summary-title">Total Calories This Month</div>
+				<div class="summary-value"
+					th:with="totalCalories=${consumptionSummary != null and not #lists.isEmpty(consumptionSummary)} ? ${consumptionSummary[0].totalCaloriesConsumedInMonth} : '0'"
+					th:text="${totalCalories}"
+					th:classappend="${totalCalories > 2500} ? 'exceed-limit'">0</div>
+			</div>
+
+			<!-- Monthly Expenditure Card -->
+			<div class="summary-card expenditure">
+				<div class="summary-title">Total Expenditure This Month</div>
+				<div class="summary-value"
+					th:with="totalAmount=${consumptionSummary != null and not #lists.isEmpty(consumptionSummary)} ? ${consumptionSummary[0].totalAmountSpentInMonth} : '0'"
+					th:text="'€' + ${totalAmount}"
+					th:classappend="${totalAmount > 1000} ? 'exceed-limit'">€0</div>
+			</div>
+		</section>
+
+		<form action="/public/dashboard" method="get"
+			class="date-selector-form">
+
+			<div class="date-selector">
+				<select id="monthSelect" name="month">
+					<option th:each="month : ${months}" th:value="${month.value}"
+						th:text="${month.displayName}"
+						th:selected="${month.value == selectedMonth}"></option>
+				</select> <select id="yearSelect" name="year">
+					<option th:each="year : ${years}" th:value="${year}"
+						th:text="${year}" th:selected="${year == selectedYear}">
+					</option>
+				</select>
+				<button type="submit" class="search-button">Search</button>
+			</div>
+		</form>
+
+
+		<section class="calendar-view">
+			<div class="calendar-grid">
+				<div th:each="day : ${consumptionSummary[0].dailyFoodConsumptions}"
+					class="calendar-day"
+					th:classappend="${day.caloriesLimitExceeded ? 'calories-exceeded' : ''}">
+					<div class="day-header" th:text="${day.day}">DaY</div>
+					<div class="day-header" th:text="${day.date}">Date</div>
+					<div class="day-content">
+						<div class="calories" th:text="'Calories: ' + ${day.calories}">Calories:
+							0</div>
+						<div class="amount" th:text="'€' + ${day.amount}">€0</div>
+						<div class="calories-warning" th:if="${day.caloriesLimitExceeded}">
+							<svg class="warning-icon" viewBox="0 0 24 24">
+                                <path
+									d="M12 2L1 21h22L12 2zm0 3.45l8 14.55H4l8-14.55zM11 16h2v2h-2v-2zm0-7h2v5h-2V9z" />
+                            </svg>
+							Calorie limit exceeded
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+	</main>
+</body>
+</html>
