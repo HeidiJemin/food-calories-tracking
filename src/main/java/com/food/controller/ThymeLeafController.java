@@ -39,9 +39,10 @@ import com.food.response.payload.FoodConsumptionDto;
 import com.food.response.payload.FoodResponseDto;
 import com.food.response.payload.GenericMessage;
 import com.food.response.payload.PagedResponseDto;
-
+import com.food.response.payload.PriceLimitReachedResponseDto;
+import com.food.response.payload.SimplifiedWeeklyReportDto;
 import com.food.response.payload.UserResponseDto;
-
+import com.food.response.payload.WeeklyFoodReportResponseDto;
 import com.food.service.AuthService;
 import com.food.service.FoodService;
 
@@ -336,5 +337,120 @@ public class ThymeLeafController {
 		}
 		return "redirect:/public/food-report";
 	}
+	@GetMapping("/admin/dashboard")
+	public String showAdminDashboard(
+	        @RequestParam(name="startDate",required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+	        @RequestParam(name="endDate",required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+	        @RequestParam(name="month",required = false) Integer month, 
+	        @RequestParam(name="year", required = false) Integer year, 
+	        Model model,
+	        HttpSession session) {
+
+	    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+	    System.out.println("Authorities: " + auth.getAuthorities());
+
+	    UserResponseDto userResponseDto = (UserResponseDto) session.getAttribute("user");
+
+	    if (userResponseDto == null) {
+	        model.addAttribute("error", "You must be logged in to access the admin dashboard.");
+	        return "redirect:/login";
+	    }
+
+	    LocalDate currentDate = LocalDate.now();
+	    if (startDate == null) {
+	        startDate = currentDate.minusDays(7);
+	    }
+	    if (endDate == null) {
+	        endDate = currentDate;
+	    }
+
+	    if (month == null) {
+	        month = currentDate.getMonth().getValue();
+	    }
+	    if (year == null) {
+	        year = currentDate.getYear();
+	    }
+
+	    List<FoodCaloriesResponseDto> averageCalories = foodService.calculateAverageCaloriesPerUser(startDate, endDate);
+	    model.addAttribute("averageCalories", averageCalories);
+
+	    PriceLimitReachedResponseDto exceededPriceLimitUsers = foodService.getUsersWithExceededPriceLimit(month, year);
+	    model.addAttribute("exceededPriceLimitUsers", exceededPriceLimitUsers != null ? exceededPriceLimitUsers : new PriceLimitReachedResponseDto());
+
+	    try {
+	        List<WeeklyFoodReportResponseDto> weeklyReport = foodService.getWeeklyFoodReport(userResponseDto.getId());
+
+	        LocalDate now = LocalDate.now();
+	        LocalDate startOfCurrentWeek = now.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+	        LocalDate startOfPreviousWeek = startOfCurrentWeek.minusWeeks(1);
+
+	        List<SimplifiedWeeklyReportDto> currentWeekReport = weeklyReport.stream()
+	                .filter(report -> {
+	                    LocalDate reportDate = report.getDate();
+	                    return !reportDate.isBefore(startOfCurrentWeek) && !reportDate.isAfter(now);
+	                })
+	                .map(report -> new SimplifiedWeeklyReportDto(
+	                        report.getDate(),
+	                        report.getDay(),
+	                        calculateTotalFoodEntries(report)
+	                ))
+	                .collect(Collectors.toList());
+
+	        List<SimplifiedWeeklyReportDto> previousWeekReport = weeklyReport.stream()
+	                .filter(report -> {
+	                    LocalDate reportDate = report.getDate();
+	                    return !reportDate.isBefore(startOfPreviousWeek) && reportDate.isBefore(startOfCurrentWeek);
+	                })
+	                .map(report -> new SimplifiedWeeklyReportDto(
+	                        report.getDate(),
+	                        report.getDay(),
+	                        calculateTotalFoodEntries(report)
+	                ))
+	                .collect(Collectors.toList());
+
+
+	        int currentWeekTotal = currentWeekReport.stream()
+	                .mapToInt(SimplifiedWeeklyReportDto::getTotalFoodEntries)
+	                .sum();
+	        
+	        int previousWeekTotal = previousWeekReport.stream()
+	                .mapToInt(SimplifiedWeeklyReportDto::getTotalFoodEntries)
+	                .sum();
+
+	        model.addAttribute("currentWeekReport", currentWeekReport);
+	        model.addAttribute("previousWeekReport", previousWeekReport);
+	        model.addAttribute("currentWeekTotal", currentWeekTotal);
+	        model.addAttribute("previousWeekTotal", previousWeekTotal);
+	    } catch (Exception e) {
+	        model.addAttribute("error", "Error fetching weekly food report: " + e.getMessage());
+	    }
+
+	    // Add month and year selection options
+	    List<Map<String, String>> months = IntStream.rangeClosed(1, 12)
+	            .mapToObj(m -> Map.of("value", String.valueOf(m), 
+	                                 "displayName", Month.of(m).getDisplayName(TextStyle.SHORT, Locale.ENGLISH)))
+	            .toList();
+	    model.addAttribute("months", months);
+
+	    int currentYear = currentDate.getYear();
+	    List<Integer> years = IntStream.rangeClosed(currentYear - 5, currentYear + 5).boxed().toList();
+	    model.addAttribute("years", years);
+
+	    model.addAttribute("selectedMonth", String.valueOf(month));
+	    model.addAttribute("selectedYear", year);
+	    model.addAttribute("startDate", startDate);
+	    model.addAttribute("endDate", endDate);
+	    model.addAttribute("user", userResponseDto);
+
+	    return "adminDashboard";
+	}
+	
+	private int calculateTotalFoodEntries(WeeklyFoodReportResponseDto report) {
+	    return report.getUserDetails().stream()
+	            .mapToInt(userDetail -> userDetail.getFoodResponses().size())
+	            .sum();
+	}
+
+
 
 }
