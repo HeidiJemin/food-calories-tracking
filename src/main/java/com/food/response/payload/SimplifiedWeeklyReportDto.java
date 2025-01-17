@@ -6,7 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 
 @Data
-@AllArgsConstructor
+
 public class SimplifiedWeeklyReportDto {
     private LocalDate date;
     private String day;
