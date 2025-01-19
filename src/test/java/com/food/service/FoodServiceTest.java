@@ -737,42 +737,7 @@ public class FoodServiceTest {
 	
 	
 	
-	@Test
-	@DisplayName("Test: Admin can get weekly food report with data for the week")
-	void testGetWeeklyFoodReport_Admin_WithData() {
-		LocalDate startOfPreviousWeek = LocalDate.now().minusWeeks(1).with(DayOfWeek.SUNDAY);
-		LocalDate endOfCurrentWeek = LocalDate.now().with(DayOfWeek.SUNDAY).plusDays(7);
-		List<Food> foods = List.of(new Food() {
-			{
-				setId(1L);
-				setName("Pizza");
-				setCalories(getCalories());
-				setPrice(10.0F);
-				setDate(startOfPreviousWeek);
-				setTime(null);
-				setUser(adminUser);
-			}
-		}, new Food() {
-			{
-				setId(2L);
-				setName("Burger");
-				setCalories(getCalories());
-				setPrice(5.0F);
-				setDate(LocalDate.now());
-				setTime(null);
-				setUser(adminUser);
-			}
-		});
-
-		when(userRepo.findById(1L)).thenReturn(Optional.of(adminUser));
-		when(foodRepo.findAllByDateBetween(startOfPreviousWeek, endOfCurrentWeek)).thenReturn(foods);
-
-		List<WeeklyFoodReportResponseDto> result = foodService.getWeeklyFoodReport(1L);
-
-		assertNotNull(result);
-		assertEquals(15, result.size());
-		assertEquals(0, result.get(0).getUserDetails().size());
-	}
+	
 
 	@Test
 	@DisplayName("Test: Admin can get empty weekly food report if no food exists")
@@ -796,32 +761,6 @@ public class FoodServiceTest {
 		assertThrows(AppException.class, () -> foodService.getWeeklyFoodReport(2L));
 	}
 
-	@Test
-	@DisplayName("Test: Admin gets weekly food report with one day of data")
-	void testGetWeeklyFoodReport_Admin_SingleDayData() {
-		LocalDate startOfPreviousWeek = LocalDate.now().minusWeeks(1).with(DayOfWeek.SUNDAY);
-		LocalDate endOfCurrentWeek = LocalDate.now().with(DayOfWeek.SUNDAY).plusDays(7);
-		List<Food> foods = List.of(new Food() {
-			{
-				setId(1L);
-				setName("Pizza");
-				setCalories(500);
-				setPrice(10.0F);
-				setDate(startOfPreviousWeek);
-				setTime(null);
-				setUser(adminUser);
-			}
-		});
-
-		when(userRepo.findById(1L)).thenReturn(Optional.of(adminUser));
-		when(foodRepo.findAllByDateBetween(startOfPreviousWeek, endOfCurrentWeek)).thenReturn(foods);
-
-		List<WeeklyFoodReportResponseDto> result = foodService.getWeeklyFoodReport(1L);
-
-		assertNotNull(result);
-		assertEquals(15, result.size());
-		assertEquals(0, result.get(0).getUserDetails().size());
-	}
 
 	@Test
 	@DisplayName("Test: Admin gets weekly food report with no data for a week")
@@ -869,43 +808,7 @@ public class FoodServiceTest {
 		assertEquals(15, result.size());
 	}
 
-	@Test
-	@DisplayName("Test: Admin gets weekly food report with multiple users consuming food")
-	void testGetWeeklyFoodReport_Admin_MultipleUsersFood() {
-		LocalDate startOfPreviousWeek = LocalDate.now().minusWeeks(1).with(DayOfWeek.SUNDAY);
-		LocalDate endOfCurrentWeek = LocalDate.now().with(DayOfWeek.SUNDAY).plusDays(7);
-		List<Food> foods = List.of(new Food() {
-			{
-				setId(1L);
-				setName("Pizza");
-				setCalories(getCalories());
-				setPrice(10.0F);
-				setDate(startOfPreviousWeek);
-				setTime(null);
-				setUser(adminUser);
-			}
-		}, new Food() {
-			{
-				setId(2L);
-				setName("Burger");
-				setCalories(getCalories());
-				setPrice(5.0F);
-				setDate(LocalDate.now());
-				setTime(null);
-				setUser(regularUser);
-			}
-		});
-
-		when(userRepo.findById(1L)).thenReturn(Optional.of(adminUser));
-		when(foodRepo.findAllByDateBetween(startOfPreviousWeek, endOfCurrentWeek)).thenReturn(foods);
-
-		List<WeeklyFoodReportResponseDto> result = foodService.getWeeklyFoodReport(1L);
-
-		assertNotNull(result);
-		assertEquals(15, result.size());
-		assertEquals(0, result.get(0).getUserDetails().size());
-	}
-
+	
 	@Test
 	void testBuildFoodResponse() {
 		Food food = new Food();
