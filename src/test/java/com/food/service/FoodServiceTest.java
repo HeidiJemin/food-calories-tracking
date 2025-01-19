@@ -225,6 +225,518 @@ public class FoodServiceTest {
 		assertEquals(250, result.getCalories());
 		assertEquals(10.0, result.getPrice());
 	}
+	
+	@Test
+	@DisplayName("Update Food - User Not Found")
+	void testUpdateFood_UserNotFound() {
+		Long foodId = 1L;
+		FoodDto foodDto = new FoodDto();
+		foodDto.setUserId(999L);
+		foodDto.setName("Burger");
+		foodDto.setCalories(300);
+		foodDto.setPrice(8.0F);
+		foodDto.setDate(LocalDateTime.now().toLocalDate());
+		foodDto.setTime(LocalDateTime.now().toLocalTime());
+
+		when(userRepo.findById(foodDto.getUserId())).thenReturn(Optional.empty());
+
+		assertThrows(AppException.class, () -> {
+			foodService.updateFood(foodId, foodDto);
+		});
+	}
+
+	@Test
+	@DisplayName("Update Food - Food Not Found")
+	void testUpdateFood_FoodNotFound() {
+		Long foodId = 999L;
+		FoodDto foodDto = new FoodDto();
+		foodDto.setUserId(1L);
+		foodDto.setName("Pasta");
+		foodDto.setCalories(350);
+		foodDto.setPrice(12.0F);
+		foodDto.setDate(LocalDateTime.now().toLocalDate());
+		foodDto.setTime(LocalDateTime.now().toLocalTime());
+
+		User user = new User();
+		user.setId(1L);
+
+		when(userRepo.findById(foodDto.getUserId())).thenReturn(Optional.of(user));
+		when(foodRepo.findById(foodId)).thenReturn(Optional.empty());
+
+		assertThrows(AppException.class, () -> {
+			foodService.updateFood(foodId, foodDto);
+		});
+	}
+
+	@Test
+	@DisplayName("Update Food - Permission Denied")
+	void testUpdateFood_PermissionDenied() {
+		Long foodId = 1L;
+		FoodDto foodDto = new FoodDto();
+		foodDto.setUserId(2L);
+		foodDto.setName("Salad");
+		foodDto.setCalories(150);
+		foodDto.setPrice(5.0F);
+		foodDto.setDate(LocalDateTime.now().toLocalDate());
+		foodDto.setTime(LocalDateTime.now().toLocalTime());
+
+		User user = new User();
+		user.setId(1L);
+
+		Food existingFood = new Food();
+		existingFood.setId(foodId);
+		existingFood.setUser(user);
+
+		when(userRepo.findById(foodDto.getUserId())).thenReturn(Optional.of(user));
+		when(foodRepo.findById(foodId)).thenReturn(Optional.of(existingFood));
+
+		assertThrows(AppException.class, () -> {
+			foodService.updateFood(foodId, foodDto);
+		});
+	}
+
+	@Test
+	@DisplayName("Update Food - Save Failed")
+	void testUpdateFood_SaveFailed() {
+		Long foodId = 1L;
+		FoodDto foodDto = new FoodDto();
+		foodDto.setUserId(1L);
+		foodDto.setName("Pizza");
+		foodDto.setCalories(250);
+		foodDto.setPrice(10.0F);
+		foodDto.setDate(LocalDateTime.now().toLocalDate());
+		foodDto.setTime(LocalDateTime.now().toLocalTime());
+
+		User user = new User();
+		user.setId(1L);
+
+		Food existingFood = new Food();
+		existingFood.setId(foodId);
+		existingFood.setUser(user);
+		existingFood.setName("Old Pizza");
+		existingFood.setCalories(200);
+		existingFood.setPrice(8.0F);
+		existingFood.setDate(LocalDateTime.now().toLocalDate());
+		existingFood.setTime(LocalDateTime.now().toLocalTime());
+
+		when(userRepo.findById(foodDto.getUserId())).thenReturn(Optional.of(user));
+		when(foodRepo.findById(foodId)).thenReturn(Optional.of(existingFood));
+		when(foodRepo.save(any(Food.class))).thenThrow(new RuntimeException("Database Error"));
+
+		assertThrows(AppException.class, () -> {
+			foodService.updateFood(foodId, foodDto);
+		});
+	}
+
+	@Test
+    @DisplayName("Delete Food - Success")
+    void testDeleteFood_Success() {
+        Long foodId = 1L;
+        Long userId = 1L;
+
+        User user = new User();
+        user.setId(userId);
+
+        Food food = new Food();
+        food.setId(foodId);
+        food.setUser(user);
+
+        when(userRepo.findById(userId)).thenReturn(Optional.of(user));
+        when(foodRepo.findById(foodId)).thenReturn(Optional.of(food));
+
+        foodService.deleteFood(foodId, userId);
+
+        verify(foodRepo, times(1)).delete(food);
+    }
+
+    @Test
+    @DisplayName("Delete Food - User Not Found")
+    void testDeleteFood_UserNotFound() {
+        Long foodId = 1L;
+        Long userId = 1L;
+
+        when(userRepo.findById(userId)).thenReturn(Optional.empty());
+
+        AppException exception = assertThrows(AppException.class, () -> {
+            foodService.deleteFood(foodId, userId);
+        });
+
+        assertEquals("User id not found", exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("Delete Food - Food Not Found")
+    void testDeleteFood_FoodNotFound() {
+        Long foodId = 1L;
+        Long userId = 1L;
+
+        User user = new User();
+        user.setId(userId);
+
+        when(userRepo.findById(userId)).thenReturn(Optional.of(user));
+        when(foodRepo.findById(foodId)).thenReturn(Optional.empty());
+
+        AppException exception = assertThrows(AppException.class, () -> {
+            foodService.deleteFood(foodId, userId);
+        });
+
+        assertEquals("Food id not found", exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("Delete Food - Permission Denied")
+    void testDeleteFood_PermissionDenied() {
+        Long foodId = 1L;
+        Long userId = 1L;
+        Long anotherUserId = 2L;
+
+        User user = new User();
+        user.setId(userId);
+
+        Food food = new Food();
+        food.setId(foodId);
+        food.setUser(new User());
+
+        when(userRepo.findById(userId)).thenReturn(Optional.of(user));
+        when(foodRepo.findById(foodId)).thenReturn(Optional.of(food));
+
+        AppException exception = assertThrows(AppException.class, () -> {
+            foodService.deleteFood(foodId, anotherUserId);
+        });
+
+        assertEquals("User id not found", exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("Delete Food - Invalid ID")
+    void testDeleteFood_InvalidId() {
+        Long foodId = 999L;
+        Long userId = 1L;
+
+        User user = new User();
+        user.setId(userId);
+
+        when(userRepo.findById(userId)).thenReturn(Optional.of(user));
+        when(foodRepo.findById(foodId)).thenReturn(Optional.empty());
+
+        AppException exception = assertThrows(AppException.class, () -> {
+            foodService.deleteFood(foodId, userId);
+        });
+
+        assertEquals("Food id not found", exception.getMessage());
+    }
+
+    @Test
+    @DisplayName("Delete Food - User Role Check")
+    void testDeleteFood_UserRoleCheck() {
+        Long foodId = 1L;
+        Long userId = 1L;
+
+        User user = new User();
+        user.setId(userId);
+        user.setRole(RoleType.ROLE_USER.name());
+
+        Food food = new Food();
+        food.setId(foodId);
+        food.setUser(user);
+
+        when(userRepo.findById(userId)).thenReturn(Optional.of(user));
+        when(foodRepo.findById(foodId)).thenReturn(Optional.of(food));
+
+        foodService.deleteFood(foodId, userId);
+
+        verify(foodRepo, times(1)).delete(food);
+
+        Long anotherUserId = 2L;
+
+        AppException exception = assertThrows(AppException.class, () -> {
+            foodService.deleteFood(foodId, anotherUserId);
+        });
+
+        assertEquals("User id not found", exception.getMessage());
+    }
+
+	@Test
+	@DisplayName("Get Food By ID - Success")
+	void testGetFoodById_Success() {
+		Long foodId = 1L;
+
+		Food food = new Food();
+		food.setId(foodId);
+		food.setName("Pizza");
+		food.setCalories(250);
+		food.setPrice(10.0F);
+
+		when(foodRepo.findById(foodId)).thenReturn(Optional.of(food));
+
+		Food result = foodService.getFoodById(foodId);
+
+		assertEquals(foodId, result.getId());
+		assertEquals("Pizza", result.getName());
+		assertEquals(250, result.getCalories());
+		assertEquals(10.0, result.getPrice());
+	}
+
+	@Test
+	@DisplayName("Get Food By ID - Food Not Found")
+	void testGetFoodById_FoodNotFound() {
+		Long foodId = 1L;
+
+		when(foodRepo.findById(foodId)).thenReturn(Optional.empty());
+
+		assertThrows(AppException.class, () -> {
+			foodService.getFoodById(foodId);
+		});
+	}
+
+	@Test
+	@DisplayName("Get Food By ID - Invalid ID")
+	void testGetFoodById_InvalidId() {
+		Long foodId = 999L;
+
+		when(foodRepo.findById(foodId)).thenReturn(Optional.empty());
+
+		assertThrows(AppException.class, () -> {
+			foodService.getFoodById(foodId);
+		});
+	}
+
+	@Test
+	@DisplayName("Get Food By ID - Database Error")
+	void testGetFoodById_DatabaseError() {
+		Long foodId = 1L;
+
+		when(foodRepo.findById(foodId)).thenThrow(new RuntimeException("Database Error"));
+
+		assertThrows(AppException.class, () -> {
+			foodService.getFoodById(foodId);
+		});
+	}
+
+	@Test
+	@DisplayName("Get Food By ID - Null Food Object")
+	void testGetFoodById_NullFood() {
+		Long foodId = 1L;
+
+		when(foodRepo.findById(foodId)).thenReturn(Optional.ofNullable(null));
+
+		assertThrows(AppException.class, () -> {
+			foodService.getFoodById(foodId);
+		});
+	}
+
+	@Test
+	@DisplayName("Check Daily Calorie Threshold - Success, Below Limit")
+	void testCheckDailyCalorieThreshold_Success_BelowLimit() {
+		Long userId = 1L;
+		LocalDate requestDate = LocalDate.now();
+
+		Food food1 = new Food();
+		food1.setCalories(500);
+		food1.setUser(new User());
+		food1.setDate(requestDate);
+
+		Food food2 = new Food();
+		food2.setCalories(400);
+		food2.setUser(new User());
+		food2.setDate(requestDate);
+
+		List<Food> foodsConsumedToday = Arrays.asList(food1, food2);
+
+		when(userRepo.findById(userId)).thenReturn(Optional.of(new User()));
+		when(foodRepo.findByUserIdAndDate(userId, requestDate)).thenReturn(foodsConsumedToday);
+
+		when(foodService.checkDailyCalorieThreshold(userId, requestDate)).thenReturn(null);
+
+		assertNull(null, "The result should be null as the calories are below the limit.");
+	}
+
+	@Test
+	@DisplayName("Check Daily Calorie Threshold - Success, Exactly at Limit")
+	void testCheckDailyCalorieThreshold_Success_AtLimit() {
+		Long userId = 1L;
+		LocalDate requestDate = LocalDate.now();
+
+		Food food1 = new Food();
+		food1.setCalories(1000);
+		food1.setUser(new User());
+		food1.setDate(requestDate);
+
+		Food food2 = new Food();
+		food2.setCalories(1000);
+		food2.setUser(new User());
+		food2.setDate(requestDate);
+
+		List<Food> foodsConsumedToday = Arrays.asList(food1, food2);
+
+		when(userRepo.findById(userId)).thenReturn(Optional.of(new User()));
+		when(foodRepo.findByUserIdAndDate(userId, requestDate)).thenReturn(foodsConsumedToday);
+
+		when(foodService.checkDailyCalorieThreshold(userId, requestDate)).thenReturn(null);
+
+		assertNull(null, "The result should be null as the calories are exactly at the limit.");
+	}
+
+	@Test
+	@DisplayName("Check Daily Calorie Threshold - Success, Exceeded Limit")
+	void testCheckDailyCalorieThreshold_Success_ExceededLimit() {
+		Long userId = 1L;
+		LocalDate requestDate = LocalDate.now();
+
+		Food food1 = new Food();
+		food1.setCalories(1200);
+		food1.setUser(new User());
+		food1.setDate(requestDate);
+
+		Food food2 = new Food();
+		food2.setCalories(900);
+		food2.setUser(new User());
+		food2.setDate(requestDate);
+
+		List<Food> foodsConsumedToday = Arrays.asList(food1, food2);
+
+		when(userRepo.findById(userId)).thenReturn(Optional.of(new User()));
+		when(foodRepo.findByUserIdAndDate(userId, requestDate)).thenReturn(foodsConsumedToday);
+
+		GenericMessage result = foodService.checkDailyCalorieThreshold(userId, requestDate);
+
+		assertEquals("You have exceeded your daily calorie limit of 0 .", result.getMessage());
+	}
+
+	@Test
+	@DisplayName("Check Daily Calorie Threshold - User Not Found")
+	void testCheckDailyCalorieThreshold_UserNotFound() {
+		Long userId = 1L;
+		LocalDate requestDate = LocalDate.now();
+
+		when(userRepo.findById(userId)).thenReturn(Optional.empty());
+
+		assertThrows(AppException.class, () -> {
+			foodService.checkDailyCalorieThreshold(userId, requestDate);
+		});
+	}
+
+	@Test
+	@DisplayName("Check Daily Calorie Threshold - Food List Not Found")
+	void testCheckDailyCalorieThreshold_FoodListNotFound() {
+		Long userId = 1L;
+		LocalDate requestDate = LocalDate.now();
+
+		when(userRepo.findById(userId)).thenReturn(Optional.of(new User()));
+		when(foodRepo.findByUserIdAndDate(userId, requestDate)).thenReturn(null);
+
+		assertThrows(AppException.class, () -> {
+			foodService.checkDailyCalorieThreshold(userId, requestDate);
+		});
+	}
+
+	@Test
+	@DisplayName("Check Monthly Expenditure - Success, Below Limit")
+	void testCheckMonthlyExpenditure_Success_BelowLimit() {
+		Long userId = 1L;
+		LocalDate requestDate = LocalDate.now();
+
+		Food food1 = new Food();
+		food1.setPrice(150.0F);
+		food1.setUser(new User());
+		food1.setDate(requestDate);
+
+		Food food2 = new Food();
+		food2.setPrice(200.0F);
+		food2.setUser(new User());
+		food2.setDate(requestDate);
+
+		List<Food> foodsConsumedThisMonth = Arrays.asList(food1, food2);
+
+		when(userRepo.findById(userId)).thenReturn(Optional.of(new User()));
+		when(foodRepo.findByUserIdAndDate(userId, requestDate)).thenReturn(foodsConsumedThisMonth);
+
+		when(foodService.checkMonthlyExpenditure(userId, requestDate)).thenReturn(null);
+
+		assertNull(null, "The result should be null as the total expenditure is below the limit.");
+	}
+
+	@Test
+	@DisplayName("Check Monthly Expenditure - Success, Exactly at Limit")
+	void testCheckMonthlyExpenditure_Success_AtLimit() {
+		Long userId = 1L;
+		LocalDate requestDate = LocalDate.now();
+
+		Food food1 = new Food();
+		food1.setPrice(250.0F);
+		food1.setUser(new User());
+		food1.setDate(requestDate);
+
+		Food food2 = new Food();
+		food2.setPrice(250.0F);
+		food2.setUser(new User());
+		food2.setDate(requestDate);
+
+		List<Food> foodsConsumedThisMonth = Arrays.asList(food1, food2);
+
+		when(userRepo.findById(userId)).thenReturn(Optional.of(new User()));
+		when(foodRepo.findByUserIdAndDate(userId, requestDate)).thenReturn(foodsConsumedThisMonth);
+
+		when(foodService.checkMonthlyExpenditure(userId, requestDate)).thenReturn(null);
+
+		assertNull(null, "The result should be null as the total expenditure is exactly at the limit.");
+	}
+
+	@Test
+	@DisplayName("Check Monthly Expenditure - Success, Exceeded Limit")
+	void testCheckMonthlyExpenditure_Success_ExceededLimit() {
+		Long userId = 1L;
+		LocalDate requestDate = LocalDate.now();
+
+		Food food1 = new Food();
+		food1.setPrice(300.0F);
+		food1.setUser(new User());
+		food1.setDate(requestDate);
+
+		Food food2 = new Food();
+		food2.setPrice(250.0F);
+		food2.setUser(new User());
+		food2.setDate(requestDate);
+
+		List<Food> foodsConsumedThisMonth = Arrays.asList(food1, food2);
+
+		when(userRepo.findById(userId)).thenReturn(Optional.of(new User()));
+		when(foodRepo.findByUserIdAndDate(userId, requestDate)).thenReturn(foodsConsumedThisMonth);
+
+		GenericMessage result = foodService.checkMonthlyExpenditure(userId, requestDate);
+
+		assertEquals("You have exceeded your monthly expenditure limit of " + "\u20ac" + "0.0 .", result.getMessage());
+	}
+
+	@Test
+	@DisplayName("Check Monthly Expenditure - User Not Found")
+	void testCheckMonthlyExpenditure_UserNotFound() {
+		Long userId = 1L;
+		LocalDate requestDate = LocalDate.now();
+
+		when(userRepo.findById(userId)).thenReturn(Optional.empty());
+
+		assertThrows(AppException.class, () -> {
+			foodService.checkMonthlyExpenditure(userId, requestDate);
+		});
+	}
+
+	@Test
+	@DisplayName("Check Monthly Expenditure - No Food Records")
+	void testCheckMonthlyExpenditure_NoFoodRecords() {
+		Long userId = 1L;
+		LocalDate requestDate = LocalDate.now();
+
+		when(userRepo.findById(userId)).thenReturn(Optional.of(new User()));
+		when(foodRepo.findByUserIdAndDate(userId, requestDate)).thenReturn(Arrays.asList());
+
+		when(foodService.checkMonthlyExpenditure(userId, requestDate)).thenReturn(null);
+
+		assertNull(null, "The result should be null as no food records exist.");
+	}
+	
+	
+	
 	@Test
 	@DisplayName("Test: Admin can get weekly food report with data for the week")
 	void testGetWeeklyFoodReport_Admin_WithData() {
