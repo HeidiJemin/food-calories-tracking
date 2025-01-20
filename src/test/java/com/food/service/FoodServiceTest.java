@@ -736,7 +736,280 @@ public class FoodServiceTest {
 	}
 	
 	
-	
+	@Test
+	@DisplayName("Get Food Consumption Summary - Success with valid dates")
+	void testGetFoodConsumptionSummary_Success_ValidDates() {
+	    Long userId = 1L;
+	    int month = LocalDate.now().getMonthValue();
+	    int year = LocalDate.now().getYear();
+	    LocalDate startDate = LocalDate.of(year, month, 1);
+	    LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
+
+
+	    Food food1 = new Food();
+	    food1.setPrice(100.0F);
+	    food1.setCalories(200);
+	    food1.setUser(new User());
+	    food1.setDate(startDate.plusDays(5));
+
+	    Food food2 = new Food();
+	    food2.setPrice(150.0F);
+	    food2.setCalories(300);
+	    food2.setUser(new User());
+	    food2.setDate(startDate.plusDays(10));
+
+	    List<Food> consumedFoods = Arrays.asList(food1, food2);
+
+	    when(foodRepo.findByUserIdAndDateBetween(userId, startDate, endDate))
+	        .thenReturn(consumedFoods);
+
+	    List<FoodConsumptionDto> result = foodService.getFoodConsumptionSummary(userId, month, year);
+
+	    assertEquals(1, result.size());
+	    FoodConsumptionDto dto = result.get(0);
+	    assertEquals(250.0, dto.getTotalAmountSpentInMonth());
+	    assertEquals(500L, dto.getTotalCaloriesConsumedInMonth());
+	    assertEquals(false, false);
+
+	    List<FoodConsumptionDto.DailyFoodConsumption> dailyConsumptions = dto.getDailyFoodConsumptions();
+	    assertEquals(endDate.getDayOfMonth(), dailyConsumptions.size());
+
+	    DailyFoodConsumption day5 = dailyConsumptions.get(4);
+	    assertEquals(0L, day5.getCalories());
+	    assertEquals(0.0, day5.getAmount());
+	    assertEquals(false, day5.isCaloriesLimitExceeded());
+	}
+
+
+	    @Test
+	    @DisplayName("Get Food Consumption Summary - Success with default dates")
+	    void testGetFoodConsumptionSummary_Success_DefaultDates() {
+	        Long userId = 1L;
+	        LocalDate currentDate = LocalDate.now();
+	        LocalDate startDate = LocalDate.of(currentDate.getYear(), currentDate.getMonthValue(), 1);
+	        LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
+
+	        Food food1 = new Food();
+	        food1.setPrice(100.0F);
+	        food1.setCalories(200);
+	        food1.setUser(new User());
+	        food1.setDate(currentDate.minusDays(3));
+
+	        Food food2 = new Food();
+	        food2.setPrice(150.0F);
+	        food2.setCalories(300);
+	        food2.setUser(new User());
+	        food2.setDate(currentDate.minusDays(1));
+
+	        List<Food> consumedFoods = Arrays.asList(food1, food2);
+
+	        when(foodRepo.findByUserIdAndDateBetween(userId, startDate, endDate))
+	            .thenReturn(consumedFoods);
+
+	        List<FoodConsumptionDto> result = foodService.getFoodConsumptionSummary(userId, null, null);
+
+	        assertEquals(1, result.size());
+	        FoodConsumptionDto dto = result.get(0);
+	        assertEquals(250.0, dto.getTotalAmountSpentInMonth());
+	        assertEquals(500L, dto.getTotalCaloriesConsumedInMonth());
+	    }
+
+	    @Test
+	    @DisplayName("Get Food Consumption Summary - Empty food records for a day")
+	    void testGetFoodConsumptionSummary_EmptyFoodRecordsForDay() {
+	        Long userId = 1L;
+	        int month = LocalDate.now().getMonthValue();
+	        int year = LocalDate.now().getYear();
+	        LocalDate startDate = LocalDate.of(year, month, 1);
+	        LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
+
+	        List<Food> consumedFoods = Arrays.asList();
+
+	        when(foodRepo.findByUserIdAndDateBetween(userId, startDate, endDate))
+	            .thenReturn(consumedFoods);
+
+	        List<FoodConsumptionDto> result = foodService.getFoodConsumptionSummary(userId, month, year);
+
+	        assertEquals(1, result.size());
+	        FoodConsumptionDto dto = result.get(0);
+	        List<DailyFoodConsumption> dailyConsumptions = dto.getDailyFoodConsumptions();
+	        
+	        DailyFoodConsumption emptyDay = dailyConsumptions.get(0);
+	        assertEquals(0L, emptyDay.getCalories());
+	        assertEquals(0.0, emptyDay.getAmount());
+	        assertEquals(false, emptyDay.isCaloriesLimitExceeded());
+	    }
+
+	    @Test
+	    @DisplayName("Get Food Consumption Summary - Calories limit exceeded")
+	    void testGetFoodConsumptionSummary_CaloriesLimitExceeded() {
+	        Long userId = 1L;
+	        int monthlySpendLimit =2500 * 30;
+	        int month = LocalDate.now().getMonthValue();
+	        int year = LocalDate.now().getYear();
+	        LocalDate startDate = LocalDate.of(year, month, 1);
+	        LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
+
+	        Food food = new Food();
+	        food.setPrice(100.0F);
+	        food.setCalories(monthlySpendLimit + 100);
+	        food.setUser(new User());
+	        food.setDate(startDate.plusDays(1));
+
+	        List<Food> consumedFoods = Arrays.asList(food);
+
+	        when(foodRepo.findByUserIdAndDateBetween(userId, startDate, endDate))
+	            .thenReturn(consumedFoods);
+
+	        List<FoodConsumptionDto> result = foodService.getFoodConsumptionSummary(userId, month, year);
+
+	        FoodConsumptionDto dto = result.get(0);
+	        assertTrue(dto.isMonthlyAmountLimitReached());
+	        DailyFoodConsumption day = dto.getDailyFoodConsumptions().get(1);
+	        assertTrue(day.isCaloriesLimitExceeded());
+	    }
+
+	    @Test
+	    @DisplayName("Get Food Consumption Summary - Handle Exception")
+	    void testGetFoodConsumptionSummary_HandleException() {
+	        Long userId = 1L;
+	        int month = LocalDate.now().getMonthValue();
+	        int year = LocalDate.now().getYear();
+	        LocalDate startDate = LocalDate.of(year, month, 1);
+	        LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
+
+	        when(foodRepo.findByUserIdAndDateBetween(userId, startDate, endDate))
+	            .thenThrow(new RuntimeException("Database error"));
+
+	        assertThrows(AppException.class, () -> {
+	            foodService.getFoodConsumptionSummary(userId, month, year);
+	        });
+	    }
+
+	@Test
+	@DisplayName("Get All Food - Start date after end date")
+	void testGetAllFood_InvalidDateRange() {
+	    Long userId = 1L;
+	    int page = 0, size = 10;
+	    LocalDate requestStartDate = LocalDate.now().plusDays(1);
+	    LocalDate requestEndDate = LocalDate.now();
+
+	    assertThrows(AppException.class, () -> {
+	        foodService.getAllFood(userId, requestStartDate, requestEndDate, page, size, 0L);
+	    });
+	}
+
+
+	@Test
+	@DisplayName("Get All Food - User not found")
+	void testGetAllFood_UserNotFound() {
+	    Long userId = 1L;
+	    int page = 0, size = 10;
+	    LocalDate requestStartDate = LocalDate.now().minusDays(7);
+	    LocalDate requestEndDate = LocalDate.now();
+
+	    when(userRepo.findById(userId)).thenReturn(Optional.empty());
+
+	    assertThrows(AppException.class, () -> {
+	        foodService.getAllFood(userId, requestStartDate, requestEndDate, page, size, 0L);
+	    });
+	}
+
+
+	@Test
+	@DisplayName("Get All Food - Unauthorized search by normal user")
+	void testGetAllFood_UnauthorizedSearch() {
+	    Long normalUserId = 2L;
+	    long searchUserId = 3L;
+	    int page = 0, size = 10;
+	    LocalDate requestStartDate = LocalDate.now().minusDays(7);
+	    LocalDate requestEndDate = LocalDate.now();
+
+	    User normalUser = new User();
+	    normalUser.setId(normalUserId);
+	    normalUser.setRole("ROLE_USER");
+
+	    when(userRepo.findById(normalUserId)).thenReturn(Optional.of(normalUser));
+
+	    assertThrows(AppException.class, () -> {
+	        foodService.getAllFood(normalUserId, requestStartDate, requestEndDate, page, size, searchUserId);
+	    });
+	}
+
+	@Test
+	@DisplayName("Get Days Food Count - Success with Valid Date Range")
+	void testGetDaysFoodCount_Success_ValidDateRange() {
+		LocalDate startDate = LocalDate.now().minusDays(10);
+		LocalDate endDate = LocalDate.now();
+		long expectedCount = 5;
+
+		when(foodRepo.countByDateBetween(startDate, endDate)).thenReturn(expectedCount);
+
+		long result = foodService.getDaysFoodCount(1L, startDate, endDate);
+
+		assertEquals(expectedCount, result);
+		verify(foodRepo, times(1)).countByDateBetween(startDate, endDate);
+	}
+
+	@Test
+	@DisplayName("Get Days Food Count - Success with No Data")
+	void testGetDaysFoodCount_Success_NoData() {
+		LocalDate startDate = LocalDate.now().minusDays(10);
+		LocalDate endDate = LocalDate.now();
+
+		when(foodRepo.countByDateBetween(startDate, endDate)).thenReturn(0L);
+
+		long result = foodService.getDaysFoodCount(1L, startDate, endDate);
+
+		assertEquals(0, result);
+		verify(foodRepo, times(1)).countByDateBetween(startDate, endDate);
+	}
+
+	@Test
+	@DisplayName("Get Days Food Count - Success with Default Date Range")
+	void testGetDaysFoodCount_Success_DefaultDateRange() {
+		LocalDate defaultStartDate = LocalDate.now().minusDays(AppConstant.DEFAULT_FOOD_TRACKING_DAYS_COUNT);
+		LocalDate defaultEndDate = LocalDate.now();
+		long expectedCount = 3;
+
+		when(foodRepo.countByDateBetween(defaultStartDate, defaultEndDate)).thenReturn(expectedCount);
+
+		long result = foodService.getDaysFoodCount(1L, null, null);
+
+		assertEquals(expectedCount, result);
+		verify(foodRepo, times(1)).countByDateBetween(defaultStartDate, defaultEndDate);
+	}
+
+	@Test
+	@DisplayName("Get Days Food Count - Failure with Start Date After End Date")
+	void testGetDaysFoodCount_Failure_StartDateAfterEndDate() {
+		LocalDate startDate = LocalDate.now();
+		LocalDate endDate = LocalDate.now().minusDays(10);
+
+		AppException exception = assertThrows(AppException.class, () -> {
+			foodService.getDaysFoodCount(1L, startDate, endDate);
+		});
+
+		assertEquals("Start date cannot be after end date.", exception.getMessage());
+		verify(foodRepo, never()).countByDateBetween(any(), any());
+	}
+
+	@Test
+	@DisplayName("Get Days Food Count - Failure with Repository Exception")
+	void testGetDaysFoodCount_Failure_RepositoryException() {
+		LocalDate startDate = LocalDate.now().minusDays(10);
+		LocalDate endDate = LocalDate.now();
+
+		when(foodRepo.countByDateBetween(startDate, endDate)).thenThrow(new RuntimeException("Database error"));
+
+		AppException exception = assertThrows(AppException.class, () -> {
+			foodService.getDaysFoodCount(1L, startDate, endDate);
+		});
+
+		assertEquals("Database error", exception.getMessage());
+		verify(foodRepo, times(1)).countByDateBetween(startDate, endDate);
+	}
+
 	
 
 	@Test
