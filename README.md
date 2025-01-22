@@ -5,6 +5,8 @@ Erik Malaj
 Heidi Jemin
 Mateo Yskollari
 
+Dokumentat e Sprint dhe Produkt Backlog jane te bashkangjitura ne formatin PDF ne repo.
+
 
 Hapat per ekzekutimin e projektit
 Për të ekzekutuar aplikacionin e ndertuar ne framework-un Spring Java (Maven):
