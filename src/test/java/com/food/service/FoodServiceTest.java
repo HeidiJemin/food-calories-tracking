@@ -1009,6 +1009,247 @@ public class FoodServiceTest {
 		assertEquals("Database error", exception.getMessage());
 		verify(foodRepo, times(1)).countByDateBetween(startDate, endDate);
 	}
+	
+	@Test
+	@DisplayName("Calculate Average Calories - Success with Multiple Users and Foods")
+	void testCalculateAverageCalories_Success_MultipleUsersAndFoods() {
+		LocalDate startDate = LocalDate.now().minusDays(10);
+		LocalDate endDate = LocalDate.now();
+
+		List<User> users = new ArrayList<>();
+		User user1 = new User();
+		user1.setId(1L);
+		user1.setName("User1");
+		user1.setRole(RoleType.ROLE_USER.name());
+		users.add(user1);
+
+		User user2 = new User();
+		user2.setId(2L);
+		user2.setName("User2");
+		user2.setRole(RoleType.ROLE_USER.name());
+		users.add(user2);
+
+		List<Food> foods = new ArrayList<>();
+		Food food1 = new Food();
+		food1.setId(1L);
+		food1.setName("Food1");
+		food1.setCalories(200);
+		food1.setDate(LocalDate.now());
+		food1.setUser(user1);
+		foods.add(food1);
+
+		Food food2 = new Food();
+		food2.setId(2L);
+		food2.setName("Food2");
+		food2.setCalories(300);
+		food2.setDate(LocalDate.now());
+		food2.setUser(user2);
+		foods.add(food2);
+
+		when(userRepo.findAllByRole(RoleType.ROLE_USER.name())).thenReturn(users);
+		when(foodRepo.findAllByDateBetween(startDate, endDate)).thenReturn(foods);
+
+		List<FoodCaloriesResponseDto> result = foodService.calculateAverageCaloriesPerUser(startDate, endDate);
+
+		assertEquals(2, result.size());
+		assertTrue(result.stream().anyMatch(dto -> dto.getUser().getId() == 1L && dto.getCalories() > 0));
+		assertTrue(result.stream().anyMatch(dto -> dto.getUser().getId() == 2L && dto.getCalories() > 0));
+	}
+
+	@Test
+	@DisplayName("Calculate Average Calories - Success with Default Date Range")
+	void testCalculateAverageCalories_Success_DefaultDateRange() {
+		LocalDate defaultStartDate = LocalDate.now().minusDays(AppConstant.DEFAULT_FOOD_TRACKING_DAYS_COUNT);
+		LocalDate defaultEndDate = LocalDate.now();
+
+		List<User> users = new ArrayList<>();
+		User user1 = new User();
+		user1.setId(1L);
+		user1.setName("User1");
+		users.add(user1);
+
+		List<Food> foods = new ArrayList<>();
+		Food food1 = new Food();
+		food1.setId(1L);
+		food1.setName("Food1");
+		food1.setCalories(100);
+		food1.setDate(LocalDate.now());
+		food1.setUser(user1);
+		foods.add(food1);
+
+		when(userRepo.findAllByRole(RoleType.ROLE_USER.name())).thenReturn(users);
+		when(foodRepo.findAllByDateBetween(defaultStartDate, defaultEndDate)).thenReturn(foods);
+
+		List<FoodCaloriesResponseDto> result = foodService.calculateAverageCaloriesPerUser(null, null);
+
+		assertEquals(1, result.size());
+		assertTrue(result.stream().anyMatch(dto -> dto.getUser().getId() == 1L && dto.getCalories() > 0));
+	}
+
+	@Test
+	@DisplayName("Calculate Average Calories - Success with No Foods Consumed")
+	void testCalculateAverageCalories_Success_NoFoodsConsumed() {
+		LocalDate startDate = LocalDate.now().minusDays(10);
+		LocalDate endDate = LocalDate.now();
+
+		List<User> users = Arrays.asList(new User());
+		User user1 = users.get(0);
+		user1.setId(1L);
+		user1.setName("User1");
+		user1.setEmail("user1@example.com");
+		user1.setRole(RoleType.ROLE_USER.name());
+
+		when(userRepo.findAllByRole(RoleType.ROLE_USER.name())).thenReturn(users);
+		when(foodRepo.findAllByDateBetween(startDate, endDate)).thenReturn(new ArrayList<>()); 
+		List<FoodCaloriesResponseDto> result = foodService.calculateAverageCaloriesPerUser(startDate, endDate);
+
+		assertEquals(1, result.size());
+		assertEquals(0, result.get(0).getCalories(), "Calories should be 0 when no food is consumed");
+	}
+
+	@Test
+	@DisplayName("Calculate Average Calories - Failure with Start Date After End Date")
+	void testCalculateAverageCalories_Failure_StartDateAfterEndDate() {
+		LocalDate startDate = LocalDate.now();
+		LocalDate endDate = LocalDate.now().minusDays(10);
+
+		AppException exception = assertThrows(AppException.class, () -> {
+			foodService.calculateAverageCaloriesPerUser(startDate, endDate);
+		});
+
+		assertEquals("Start date cannot be after end date.", exception.getMessage());
+	}
+
+	@Test
+	@DisplayName("Calculate Average Calories - Failure with No Users")
+	void testCalculateAverageCalories_Failure_NoUsers() {
+		LocalDate startDate = LocalDate.now().minusDays(10);
+		LocalDate endDate = LocalDate.now();
+
+		when(userRepo.findAll()).thenReturn(new ArrayList<>());
+
+		List<FoodCaloriesResponseDto> result = foodService.calculateAverageCaloriesPerUser(startDate, endDate);
+
+		assertTrue(result.isEmpty());
+	}
+
+	@Test
+	@DisplayName("Calculate Average Calories - Failure with Repository Exception")
+	void testCalculateAverageCalories_Failure_RepositoryException() {
+		LocalDate startDate = LocalDate.now().minusDays(10);
+		LocalDate endDate = LocalDate.now();
+
+		when(userRepo.findAllByRole("ROLE_USER")).thenThrow(new RuntimeException("Database error"));
+
+		AppException exception = assertThrows(AppException.class, () -> {
+			foodService.calculateAverageCaloriesPerUser(startDate, endDate);
+		});
+
+		assertEquals("Database error", exception.getMessage());
+	}
+
+	@Test
+	@DisplayName("Get Users with Exceeded Price Limit - Failure with Invalid Month/Year")
+	void testGetUsersWithExceededPriceLimit_Failure_InvalidMonthYear() {
+		int invalidMonth = 13;
+		int invalidYear = -1;
+
+		AppException exception = assertThrows(AppException.class, () -> {
+			foodService.getUsersWithExceededPriceLimit(invalidMonth, invalidYear);
+		});
+
+		assertEquals("Invalid value for MonthOfYear (valid values 1 - 12): 13", exception.getMessage());
+	}
+
+	@Test
+	@DisplayName("Get Users with Exceeded Price Limit - Success with Exceeded Users")
+	void testGetUsersWithExceededPriceLimit_Success() {
+		int month = 5;
+		int year = 2024;
+
+		double monthlySpendLimit = 0.00;
+
+		User user1 = new User();
+		user1.setId(1L);
+		user1.setName("User1");
+		user1.setEmail("user1@example.com");
+		user1.setRole("ROLE_USER");
+
+		User user2 = new User();
+		user2.setId(2L);
+		user2.setName("User2");
+		user2.setEmail("user2@example.com");
+		user2.setRole("ROLE_USER");
+
+		Food food1 = new Food();
+		food1.setId(1L);
+		food1.setName("Food1");
+		food1.setPrice(150);
+		food1.setDate(LocalDate.of(2024, 5, 5));
+		food1.setUser(user1);
+
+		Food food2 = new Food();
+		food2.setId(2L);
+		food2.setName("Food2");
+		food2.setPrice(100);
+		food2.setDate(LocalDate.of(2024, 5, 10));
+		food2.setUser(user1);
+
+		Food food3 = new Food();
+		food3.setId(3L);
+		food3.setName("Food3");
+		food3.setPrice(200);
+		food3.setDate(LocalDate.of(2024, 5, 15));
+		food3.setUser(user2);
+
+		List<Food> foods = Arrays.asList(food1, food2, food3);
+
+		when(foodRepo.findAllByDateBetween(any(LocalDate.class), any(LocalDate.class))).thenReturn(foods);
+
+		PriceLimitReachedResponseDto response = foodService.getUsersWithExceededPriceLimit(month, year);
+
+		assertNotNull(response);
+		assertEquals(monthlySpendLimit, response.getMonthlyLimit());
+		assertEquals(2, response.getExceededUsers().size());
+		assertTrue(response.getExceededUsers().stream()
+				.anyMatch(exceeded -> exceeded.getUser().getId() == 1L && exceeded.getTotalSpentAmount() == 250));
+		assertTrue(response.getExceededUsers().stream()
+				.anyMatch(exceeded -> exceeded.getUser().getId() == 2L && exceeded.getTotalSpentAmount() == 200));
+	}
+
+	@Test
+	@DisplayName("Get Users with Exceeded Price Limit - Failure with No Foods")
+	void testGetUsersWithExceededPriceLimit_Failure_NoFoods() {
+		int month = 10;
+		int year = 2024;
+		YearMonth yearMonth = YearMonth.of(year, month);
+		LocalDate startOfMonth = yearMonth.atDay(1);
+		LocalDate endOfMonth = yearMonth.atEndOfMonth();
+
+		when(foodRepo.findAllByDateBetween(startOfMonth, endOfMonth)).thenReturn(new ArrayList<>());
+
+		PriceLimitReachedResponseDto result = foodService.getUsersWithExceededPriceLimit(month, year);
+
+		assertTrue(result.getExceededUsers().isEmpty());
+	}
+
+	@Test
+	@DisplayName("Get Users with Exceeded Price Limit - Failure with Repository Exception")
+	void testGetUsersWithExceededPriceLimit_Failure_RepositoryException() {
+		int month = 9;
+		int year = 2024;
+		YearMonth yearMonth = YearMonth.of(year, month);
+		LocalDate startOfMonth = yearMonth.atDay(1);
+		LocalDate endOfMonth = yearMonth.atEndOfMonth();
+
+		when(foodRepo.findAllByDateBetween(startOfMonth, endOfMonth)).thenThrow(new RuntimeException("Database error"));
+
+		AppException exception = assertThrows(AppException.class, () -> {
+			foodService.getUsersWithExceededPriceLimit(month, year);
+		});
+
+		assertEquals("Database error", exception.getMessage());
+	}
 
 	
 
