@@ -22,8 +22,7 @@ Për të ekzekutuar aplikacionin e ndertuar ne framework-un Spring Java (Maven):
 5. Ekzekutoni aplikacionin Spring
 Gjeni klasën main dhe beni RUN as Java Application
 
-6)Testoni Aplikacionin
-Pasi aplikacioni Spring të funksionojë, aksesojeni atë përmes nje browser (http://localhost:("porta ne application properties").
+6)Pasi te beni Run aplikacionin Spring , aksesojeni atë përmes nje browser ne (http://localhost:("porta ne application properties").
 
 Screenshot rreth aplikacionit:
 
