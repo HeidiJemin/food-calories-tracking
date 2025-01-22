@@ -35,6 +35,8 @@ Screenshot rreth aplikacionit:
 
 <img width="952" alt="Image" src="https://github.com/user-attachments/assets/37994194-7b07-4b7f-bc5f-1884bf630f3b" />
 
+<img width="817" alt="Image" src="https://github.com/user-attachments/assets/5c24712c-c47e-4a35-ac41-32b517094cfd" />
+
 <img width="946" alt="Image" src="https://github.com/user-attachments/assets/6b997e3b-6f17-401c-b564-45916d2c4187" />
 
 <img width="794" alt="Image" src="https://github.com/user-attachments/assets/ad3c535a-7887-4816-b7da-e27915a466ec" />
