@@ -6,6 +6,8 @@ Heidi Jemin
 Mateo Yskollari
 
 Dokumentat e Sprint dhe Produkt Backlog jane te bashkangjitura ne formatin PDF ne repo.
+Kodi MySQL eshte bashkangjitur ne repo.
+Po ashtu pjese e file-ve te projektit eshte dhe nje pershkrim i thjeshte i arkitektures se aplikacionit. 
 
 
 Hapat per ekzekutimin e projektit
@@ -22,7 +24,7 @@ Për të ekzekutuar aplikacionin e ndertuar ne framework-un Spring Java (Maven):
 5. Ekzekutoni aplikacionin Spring
 Gjeni klasën main dhe beni RUN as Java Application
 
-6)Pasi te beni Run aplikacionin Spring , aksesojeni atë përmes nje browser ne (http://localhost:("porta ne application properties").
+6.Pasi te beni Run aplikacionin Spring , aksesojeni atë përmes nje browser ne (http://localhost:("porta ne application properties").
 
 Screenshot rreth aplikacionit:
 
@@ -47,6 +49,8 @@ Screenshot rreth aplikacionit:
 <img width="752" alt="Image" src="https://github.com/user-attachments/assets/c64c56fb-0743-4478-96f3-053b33eeb7d4" />
 
 <img width="472" alt="Image" src="https://github.com/user-attachments/assets/8d7997a3-7a38-42df-b9e2-d54e3e8a0a83" />
+
+<img width="827" alt="Image" src="https://github.com/user-attachments/assets/2480735e-7efc-463d-899a-e434e940589c" />
 
 Admin 
 <img width="549" alt="Image" src="https://github.com/user-attachments/assets/0844b883-b97f-4da0-9486-9172bb8f58cf" />
